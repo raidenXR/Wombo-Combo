@@ -1,0 +1,15 @@
+build/
+
+*.dat
+
+# Zig.output
+zig-out/
+.zig-cache/
+
+# FSharp/CSharp.output
+bin/
+obj/
+.fsdocs/
+output/
+tmp/
+
