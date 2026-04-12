@@ -19,7 +19,7 @@ let bounds = BoundingBox.GetBounds(vertices)
 let dx = bounds.v_max.X - bounds.v_min.X
 let dy = bounds.v_max.Y - bounds.v_min.Y
 printfn "dx: %g, dy: %g" dx dy
-let mesh = Mesh.FromVertices(vertices, 40);
+let mesh = Mesh.FromVertices(vertices, 30);
 
 let cx = vertices |> Seq.map (fun v -> v.X) |> Array.ofSeq
 let cy = vertices |> Seq.map (fun v -> v.Y) |> Array.ofSeq

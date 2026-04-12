@@ -123,8 +123,8 @@ public struct BoundingBox
 
 		var x_min = bounds.v_min.X;
 		var y_min = bounds.v_min.Y;
-		var Dx = (bounds.v_max.X - bounds.v_min.X);
-		var Dy = (bounds.v_max.Y - bounds.v_min.Y);		
+		var dx = (bounds.v_max.X - x_min) / (double)N;
+		var dy = (bounds.v_max.Y - y_min) / (double)N;		
 
 		// define the boundaries of on the grid
 		for (int i = 0; i < vertices.Length-1; i++) {
@@ -134,15 +134,17 @@ public struct BoundingBox
 			Vec2 n = Geo.Normal(a,b);
 			Vec2 l = new Vec2{X = c.X + n.X, Y = c.Y + n.Y};
 
-			double ai = N * (a.Y - y_min) / Dy;
-			double bi = N * (b.Y - y_min) / Dy;
-			double ci = N * (c.Y - y_min) / Dy;
-			double ni = N * (l.Y - y_min) / Dy;
+			double ai = Math.Round((a.Y - y_min) / dy, 0);
+			double bi = Math.Round((b.Y - y_min) / dy, 0);
+			double ci = Math.Round((c.Y - y_min) / dy, 0);
+			double ni = Math.Round((l.Y - y_min) / dy, 0);
 
-			double aj = N * (a.X - x_min) / Dx;
-			double bj = N * (b.X - x_min) / Dx;
-			double cj = N * (c.X - x_min) / Dx;
-			double nj = N * (l.X - x_min) / Dx;
+			double aj = Math.Round((a.X - x_min) / dx, 0);
+			double bj = Math.Round((b.X - x_min) / dx, 0);
+			double cj = Math.Round((c.X - x_min) / dx, 0);
+			double nj = Math.Round((l.X - x_min) / dx, 0);
+
+			Console.WriteLine("i: {0}, j:{1}", ci, cj);
 
 			int idx_a = (int)(ai*N + aj);
 			int idx_b = (int)(bi*N + bj);
@@ -163,9 +165,16 @@ public struct BoundingBox
 			int rhs = N-1;
 			while (rhs > lhs && !grid[i*N + rhs]) rhs -= 1;			
 
-			for (int j = lhs; j <= rhs; j++) {
-				grid[i*N + j] = true; 					
+			for (int j = lhs+1; j <= rhs-1; j++) {
+				 grid[i*N + j] = true; 					
 			}
+
+			// for (int j = 1; j < N/2; j++) {
+			// 	if (grid[i*N + j-1]) grid[i*N + j] = true;
+			// }
+			// for (int j = N-2; j >= N/2; j--) {
+			// 	if (grid[i*N + j+1]) grid[i*N + j] = true;
+			// }
 		}		
 
 		return grid;
@@ -197,8 +206,10 @@ public class Mesh
 		var bounds = BoundingBox.GetBounds(vertices);
 		var grid = BoundingBox.GetGrid(vertices, N);
 
-		var dx = (bounds.v_max.X - bounds.v_min.X) / (double)N;
-		var dy = (bounds.v_max.Y - bounds.v_min.Y) / (double)N;		
+		var x_min = bounds.v_min.X;
+		var y_min = bounds.v_min.Y;
+		var dx = (bounds.v_max.X - x_min) / (double)N;
+		var dy = (bounds.v_max.Y - y_min) / (double)N;		
 		var t_filled = 0;
 		
 		for (int i = 0; i < N; i++) {			
@@ -355,23 +366,24 @@ public class Mesh
 		// 	fs.Write("\n");
 		// }
 
+		var x_min = bounds.v_min.X;
+		var y_min = bounds.v_min.Y;
 		var dx = (bounds.v_max.X - bounds.v_min.X) / (double)N;
 		var dy = (bounds.v_max.Y - bounds.v_min.Y) / (double)N;		
 		
 		for (int i = 0; i < N; i++) {			
 			for (int j = 1; j < N; j++) {
 				if (grid[i*N + j] && grid[i*N + j-1]) {
-					var x1 = (j-1) * dx + bounds.v_min.X;
-					var y1 = (i) * dy + bounds.v_min.Y;
+					var x1 = (j-1) * dx + x_min;
+					var y1 = (i) * dy + y_min;
 					var p1 = new Vec2(x1,y1);
 					
-					var x2 = (j-0) * dx + bounds.v_min.X;
-					var y2 = (i) * dy + bounds.v_min.Y;
+					var x2 = (j-0) * dx + x_min;
+					var y2 = (i) * dy + y_min;
 					var p2 = new Vec2(x2,y2);
 
 					fs.WriteLine($"{p1.X}  {p1.Y}");
 					fs.WriteLine($"{p2.X}  {p2.Y}");
-					fs.WriteLine("\n");
 					fs.WriteLine("\n");
 				}
 			}
@@ -379,17 +391,16 @@ public class Mesh
 		for (int i = 1; i < N; i++) {
 			for (int j = 0; j < N; j++) {			
 				if (grid[i*N + j] && grid[(i-1)*N + j]) {
-					var x1 = (j) * dx + bounds.v_min.X;
-					var y1 = (i-1) * dy + bounds.v_min.Y;
+					var x1 = (j) * dx + x_min;
+					var y1 = (i-1) * dy + y_min;
 					var p1 = new Vec2(x1,y1);
 					
-					var x2 = (j) * dx + bounds.v_min.X;
-					var y2 = (i-0) * dy + bounds.v_min.Y;
+					var x2 = (j) * dx + x_min;
+					var y2 = (i-0) * dy + y_min;
 					var p2 = new Vec2(x2,y2);
 
 					fs.WriteLine($"{p1.X}  {p1.Y}");
 					fs.WriteLine($"{p2.X}  {p2.Y}");
-					fs.WriteLine("\n");
 					fs.WriteLine("\n");
 				}
 			}
