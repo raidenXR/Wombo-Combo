@@ -35,7 +35,7 @@ public class Solution
 
     public Solution(int N, MSIP_N msip)
     {
-        var stencil = msip switch {MSIP_N.MSIP5 => 5, MSIP_N.MSIP9 => 9};
+        var stencil = msip switch {MSIP_N.MSIP5 => 5, MSIP_N.MSIP9 => 9, _ => 5};
         this.N = N;
         b = new double [N];
         du = new double [N];
@@ -121,7 +121,7 @@ public class Solver
         // 	stencil = 5;
         // else
         // 	stencil = 9;
-        stencil = msip switch {MSIP_N.MSIP5 => 5, MSIP_N.MSIP9 => 9};
+        stencil = msip switch {MSIP_N.MSIP5 => 5, MSIP_N.MSIP9 => 9, _ => 5};
 
     }
 
