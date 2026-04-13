@@ -144,7 +144,7 @@ public struct BoundingBox
 			double cj = Math.Round((c.X - x_min) / dx, 0);
 			double nj = Math.Round((l.X - x_min) / dx, 0);
 
-			Console.WriteLine("i: {0}, j:{1}", ci, cj);
+			// Console.WriteLine("i: {0}, j:{1}", ci, cj);
 
 			int idx_a = (int)(ai*N + aj);
 			int idx_b = (int)(bi*N + bj);
