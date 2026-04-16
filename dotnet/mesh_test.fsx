@@ -103,7 +103,7 @@ Gnuplot(false, true, None)
 // |>> "set dgrid3d 20,10 qnorm 4"
 // |>> "set cntrparam level incremental -3,0.5,3"
 // |>> "splot '$vertices' with pm3d, 'antennas.dat' with points lw 3 lc rgb 'red'"
-|>> "splot $vertices using 1:2:3 with points palette lw 3 pt 2, \\"
+|>> "splot $vertices using 1:2:3 with points palette lw 3 pt 3, \\"
 // |>> $"'{out_vertices}' using 1:2:(0) with lines lc rgb 'black',\\"
 // |>> "'$vertices' using 1:2:(0) with points lc rgb 'black',\\"
 |>> "'$coordinates' using 1:2:(0) with lp lw 2 lc rgb 'black', \\"
