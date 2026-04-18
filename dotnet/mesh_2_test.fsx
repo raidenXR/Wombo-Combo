@@ -10,16 +10,16 @@ let out_nodes = "../dat-files/mesh_vertices.dat"
 
 let N = 70
 let boundary_nodes = Geo.ReadFromFile(path)
-let bounds  = Geo.GetBounds(boundary_nodes)
-let stencil = Geo.StencilFromBoundaryNodes(boundary_nodes, N)
-let _       = Geo.FillStencil(stencil, N, bounds,Marching.Horizontal)
-let nodes   = Geo.MeshFromStencil(stencil, N, bounds)
+let bounds   = Geo.GetBounds(boundary_nodes)
+let grid     = Geo.StencilFromBoundaryNodes(boundary_nodes, N)
+let _        = Geo.FillStencil(grid)
+let nodes    = Geo.MeshFromStencil(grid)
 let antennas = Signal.InitialAntennasPositions(nodes, 6)
 let signal_intensity = Array.zeroCreate<double> (nodes.Count)
 let I_opt = 8.
 
 do
-    Writer.WriteVertices(out_nodes, stencil, N, bounds)
+    Writer.WriteVertices(out_nodes, grid)
     Writer.WriteBoundaryStencil("stencil.txt", boundary_nodes, N)
 
 // these are just for plotting
@@ -40,8 +40,8 @@ let obj_fn () =
         let y  = nodes[j].Y
         let Nn = double N
         // clear signals buffer
-        for i in 0..antennas.Length-1 do
-            let p = antennas[i]
+        for k in 0..antennas.Length-1 do
+            let p = antennas[k]
             let A  = 1.      // amplitude
             let x0 = p.X      // center x
             let y0 = p.Y      // center y
@@ -49,7 +49,6 @@ let obj_fn () =
             let s_y = (Nn*Nn / 8.) * dv_y / double(nodes.Count)   // y spread of the blob
             signal_intensity[j] <- signal_intensity[j] + Signal.Gaussian(A, x, x0, y, y0, s_x, s_y)
         diff <- diff + abs(signal_intensity[j] - I_opt)
-    // printfn "signal-> min: %g, max: %g, mean: %g" (Array.min signal) (Array.max signal) (((Array.max signal)-(Array.min signal))/(double signal.Length))    
     diff
     
 
@@ -57,11 +56,14 @@ let obj_fn () =
 Signal.InitialAntennasPositions(nodes, 6)
 
 let gif = System.IO.File.CreateText("animation_gif.dat")
-let n_iter_max = 30
+let n_iter_max = 60
 let mutable n_iter = 0
 while obj_fn() > 1e-3 && n_iter <= n_iter_max do
-    Signal.MoveAntennas(stencil, N, bounds, antennas, signal_intensity)
-    
+    let struct(ci,cj) = Console.GetCursorPosition()
+    printfn "iteration: %d" n_iter
+    Signal.MoveAntennas(grid, antennas, boundary_nodes, signal_intensity)
+    Console.SetCursorPosition(0,cj)
+        
     for i in 0..5 do
         let x = antennas[i].X
         let y = antennas[i].Y
@@ -75,7 +77,7 @@ while obj_fn() > 1e-3 && n_iter <= n_iter_max do
 gif.Close()
 
 
-Gnuplot(false, true, None)
+Gnuplot()
 |> Gnuplot.datablockXY bx by "coordinates"
 |> Gnuplot.datablockXY vx vy "vertices"
 |>> "set terminal png size 840,580"
@@ -83,18 +85,16 @@ Gnuplot(false, true, None)
 |>> "unset key"
 |>> "plot $coordinates using 1:2 with lines lc rgb 'black' lw 2, \\"
 |>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
-// |>> "'$vertices' using 1:2 with points lc rgb 'black'"
 |> Gnuplot.run
 |> ignore
 
-Gnuplot(false, true, None)
+
+Gnuplot()
 |> Gnuplot.datablockXY bx by "coordinates"
 |> Gnuplot.datablockXY vx vy "vertices"
-|>> "set terminal gif animate delay 50"
+|>> "set terminal gif animate delay 30"
 |>> "set output 'antennas.gif'"
 |>> "stats 'animation_gif.dat' nooutput"
-// |>> $"set xrange [0:{N}]"
-// |>> $"set yrange [0:{N}]"
 |>> "do for [i=1:int(STATS_blocks)] {"
 |>> "     plot 'animation_gif.dat' index (i-1) with circles, \\"
 |>> $"        '{out_nodes}' using 1:2 with lines lc rgb 'black', \\"
@@ -104,7 +104,8 @@ Gnuplot(false, true, None)
 |> ignore
 
 
-Gnuplot(false, true, None)
+// Gnuplot(false, true, None)
+Gnuplot()
 |> Gnuplot.datablockXYZ vx vy signal_intensity "vertices"
 |> Gnuplot.datablockXY bx by "coordinates"
 |> Gnuplot.datablockXY (antennas |> Array.map (fun v -> v.X)) (antennas |> Array.map (fun v -> v.Y)) "antennas"
@@ -118,12 +119,7 @@ Gnuplot(false, true, None)
 |>> "set palette rgbformulae 33,13,10"
 |>> "splot $vertices using 1:2:3 with lp palette lw 2 pt 5, \\"
 |>> "'$coordinates' using 1:2:(0) with lines lw 2 lc rgb 'black'"
-// |>> $"'{out_nodes}' using 1:2:(0) with lines lc rgb 'black',\\"
-// |>> "'$vertices' using 1:2:(0) with points lc rgb 'black',\\"
-// |>> "'$coordinates' using 1:2:(0) with lp lw 2 lc rgb 'black', \\"
-// |>> "'$antennas' using 1:2:(0) with points lw 4 lc rgb 'red' notitle"
 |> Gnuplot.run
 |> ignore
 
-// System.Console.ReadKey()
 
