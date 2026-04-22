@@ -11,22 +11,42 @@ let out_nodes = "../dat-files/mesh_vertices.dat"
 let N = 70
 let boundary_nodes = Geo.ReadFromFile(path)
 let bounds   = Geo.GetBounds(boundary_nodes)
-let grid     = Geo.StencilFromBoundaryNodes(boundary_nodes, N)
+let mutable grid     = Geo.StencilFromBoundaryNodes(boundary_nodes, N)
+
+// do
+//     Writer.WriteBoundaryStencil("stencil_manual.txt", boundary_nodes, N, '*', ' ')
+//     exit 0
+
+grid.stencil_buffer <- Geo.ParseStencilBuffer("stencil_manual.txt", '*', N)
+
 let _        = Geo.FillStencil(grid)
+// let _        = Geo.FillStencil_2(grid,boundary_nodes)
 let nodes    = Geo.MeshFromStencil(grid)
 let antennas = Signal.InitialAntennasPositions(nodes, 6)
 let signal_intensity = Array.zeroCreate<double> (nodes.Count)
 let I_opt = 8.
 
-do
-    Writer.WriteVertices(out_nodes, grid)
-    Writer.WriteBoundaryStencil("stencil.txt", boundary_nodes, N)
+// do
+//     Writer.WriteGridStencil("stencil_full.txt", grid, '*', ' ')
+//     Writer.WriteVertices(out_nodes, grid)
+//     Writer.WriteBoundaryStencil("stencil.txt", boundary_nodes, N)
 
 // these are just for plotting
 let bx = boundary_nodes |> Seq.map (fun v -> v.X) |> Array.ofSeq
 let by = boundary_nodes |> Seq.map (fun v -> v.Y) |> Array.ofSeq
 let vx = nodes |> Seq.map (fun v -> v.X) |> Array.ofSeq
 let vy = nodes |> Seq.map (fun v -> v.Y) |> Array.ofSeq
+    
+let centers = Geo.Centers(boundary_nodes);
+let cx = centers |> Array.map (fun v -> v.X)
+let cy = centers |> Array.map (fun v -> v.Y)
+
+let normals = Geo.Normals(boundary_nodes);
+let nx = normals |> Array.map (fun v -> v.X)
+let ny = normals |> Array.map (fun v -> v.Y)
+
+let cnx = [|for i in 0..cx.Length-1 -> nx[i] - cx[i]|]
+let cny = [|for i in 0..cx.Length-1 -> ny[i] - cy[i]|]
     
 // minimize this function
 let obj_fn () =
@@ -76,17 +96,33 @@ while obj_fn() > 1e-3 && n_iter <= n_iter_max do
     n_iter <- n_iter + 1
 gif.Close()
 
+// Gnuplot()
+// |> Gnuplot.datablockXY bx by "coordinates"
+// |> Gnuplot.datablockXY vx vy "vertices"
+// |> Gnuplot.datablockXYZW cx cy cnx cny "normals"
+// |> Gnuplot.datablockXY cx cy "centers"
+// |>> "set terminal png size 840,580"
+// |>> "set output 'shape.png'"
+// |>> "unset key"
+// |>> "plot $coordinates using 1:2 with lp lc rgb 'black' lw 2, \\"
+// |>> "$normals using 1:2:3:4 with vectors lc rgb 'red' lw 1 , \\"
+// |>> "$centers using 1:2 with points lc rgb 'green' lw 2 "
+// // |>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
+// |> Gnuplot.run
+// |> ignore
 
-Gnuplot()
-|> Gnuplot.datablockXY bx by "coordinates"
-|> Gnuplot.datablockXY vx vy "vertices"
-|>> "set terminal png size 840,580"
-|>> "set output 'grid.png'"
-|>> "unset key"
-|>> "plot $coordinates using 1:2 with lines lc rgb 'black' lw 2, \\"
-|>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
-|> Gnuplot.run
-|> ignore
+// Gnuplot()
+// |> Gnuplot.datablockXY bx by "coordinates"
+// |> Gnuplot.datablockXY vx vy "vertices"
+// |> Gnuplot.datablockXY nx ny "normals"
+// |>> "set terminal png size 840,580"
+// |>> "set output 'grid.png'"
+// |>> "unset key"
+// |>> "plot $coordinates using 1:2 with lines lc rgb 'black' lw 2, \\"
+// // |>> "$normals using 1:2 with lp lc rgb 'red' lw 2, \\"
+// |>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
+// |> Gnuplot.run
+// |> ignore
 
 
 Gnuplot()
@@ -104,7 +140,6 @@ Gnuplot()
 |> ignore
 
 
-// Gnuplot(false, true, None)
 Gnuplot()
 |> Gnuplot.datablockXYZ vx vy signal_intensity "vertices"
 |> Gnuplot.datablockXY bx by "coordinates"

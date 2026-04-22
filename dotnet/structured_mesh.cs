@@ -15,7 +15,6 @@ public struct BoundingBox
 {
 	public Vec2 v_min;
 	public Vec2 v_max;
-
 }
 
 public struct Grid
@@ -69,11 +68,9 @@ public struct Gradient
 			case 5: return GradDirection.LL;
 			case 6: return GradDirection.LC;
 			case 7: return GradDirection.LR;
-			default: return GradDirection.Self;
-			
+			default: return GradDirection.Self;			
 		}
 	}
-
 	
 	public unsafe GradDirection SteepestAscend()
 	{
@@ -94,8 +91,7 @@ public struct Gradient
 			case 5: return GradDirection.LL;
 			case 6: return GradDirection.LC;
 			case 7: return GradDirection.LR;
-			default: return GradDirection.Self;
-			
+			default: return GradDirection.Self;			
 		}
 	}
 }
@@ -189,8 +185,8 @@ public static class Geo
 	public static Index ToStencilSystem (int N, Vec2 p, BoundingBox bounds)
 	{
 		double x_min = bounds.v_min.X;
-		double y_min = bounds.v_min.Y;
 		double x_max = bounds.v_max.X;
+		double y_min = bounds.v_min.Y;
 		double y_max = bounds.v_max.Y;
 		// double dx = (x_max - x_min) / (double)N;
 		// double dy = (y_max - y_min) / (double)N;		
@@ -265,31 +261,58 @@ public static class Geo
 		return grid;
 	}
 
+	static int MeasureMarchingRow (bool[] stencil_buffer, int N, int I)
+	{
+		int n = 0;
+		for (int j = 0; j < N; j++) {
+			if (stencil_buffer[I*N + j]) {
+				while (stencil_buffer[I*N + j]) j++;  // advance
+				n += 1;
+			}
+		}
+
+		return n;
+	}
+
 	public static void FillStencil (Grid grid)
 	{
 		for (int i = 0; i < grid.N; i++) {
 			int lhs = 0;
 			int rhs = grid.N-1;
 
-			while (!grid.stencil_buffer[i*grid.N + lhs]) lhs++; 
-			while (!grid.stencil_buffer[i*grid.N + rhs]) rhs--;
+			while (!grid.stencil_buffer[i*grid.N + lhs]) lhs++;  // advance 
+			while (!grid.stencil_buffer[i*grid.N + rhs]) rhs--;  // advance
 
-			while (grid.stencil_buffer[i*grid.N + lhs]) lhs++;
-			while (grid.stencil_buffer[i*grid.N + rhs]) rhs--;
+			while (grid.stencil_buffer[i*grid.N + lhs]) lhs++;   // advance
+			while (grid.stencil_buffer[i*grid.N + rhs]) rhs--;   // advance
 
 			int a = Math.Min(lhs, rhs);
 			int b = Math.Max(lhs, rhs);
 			bool fill = true;
 			
-			for (int j = a; j <= b; j++) {
-				if (grid.stencil_buffer[i*grid.N + j]) {
-					fill = !fill;
-					continue;
-				}
+			switch (MeasureMarchingRow(grid.stencil_buffer, grid.N, i)) {
+				case 2:
+				case 3:
+					for (int j = a; j <= b; j++) {
+						grid.stencil_buffer[i*grid.N + j] = true;
+					}
+					break;
 
-				if (fill) {
-					grid.stencil_buffer[i*grid.N + j] = true;
-				}
+				case 4: 
+					for (int j = a; j <= b; j++) {
+						if (grid.stencil_buffer[i*grid.N + j]) {
+							while (grid.stencil_buffer[i*grid.N + j]) j++;  // advance
+							j--;
+							fill = !fill;
+							continue;
+						}
+
+						if (fill) {
+							grid.stencil_buffer[i*grid.N + j] = true;
+						}
+					}
+				break;
+				default: break;
 			}
 		}
 
@@ -305,6 +328,125 @@ public static class Geo
 		}
 	}
 
+	static void FillStencil_element_Y (Grid grid, Vec2 a, Vec2 b)
+	{		
+		var index_a = ToStencilSystem(grid.N, a, grid.bounds);
+		var index_b = ToStencilSystem(grid.N, b, grid.bounds);
+
+		// subdived (recursively) if nessacary
+		if (Math.Abs(index_a.I - index_b.I) > 1 || Math.Abs(index_a.J - index_b.J) > 1) {
+			FillStencil_element_Y(grid, a, Center(a,b));
+			FillStencil_element_Y(grid, Center(a,b), b);
+		}		
+
+		int N = grid.N;		
+		Vec2 c = Center(a, b);
+		Vec2 n = Normal(a, b);
+
+		Index idx = ToStencilSystem(N, a, grid.bounds);
+		// Index idx = ToStencilSystem(N, new Vec2(c.X + n.X, c.Y + n.Y), grid.bounds);
+		int I = idx.I;
+		int J = idx.J;
+
+		if (n.Y >= 0) {
+			for (int i = I+1; i < N && !grid.stencil_buffer[i*N + J]; i++) {
+				grid.stencil_buffer[i*N + J] = true;					
+			}					
+		}
+		if (n.Y < 0) {
+			for (int i = I-1; i >= 0 && !grid.stencil_buffer[i*N + J]; i--) {
+				grid.stencil_buffer[i*N + J] = true;					
+			}					
+		}
+		// if (n.X >= 0) {
+		// 	for (int j = J+1; j < N && !grid.stencil_buffer[I*N + j]; j++) {
+		// 		grid.stencil_buffer[I*N + j] = true;					
+		// 	}					
+		// }
+		// if (n.X < 0) {
+		// 	for (int j = J-1; j >= 0 && !grid.stencil_buffer[I*N + j]; j--) {
+		// 		grid.stencil_buffer[I*N + j] = true;					
+		// 	}					
+		// }
+	}
+
+	static void FillStencil_element_X (Grid grid, Vec2 a, Vec2 b)
+	{		
+		var index_a = ToStencilSystem(grid.N, a, grid.bounds);
+		var index_b = ToStencilSystem(grid.N, b, grid.bounds);
+
+		// subdived (recursively) if nessacary
+		if (Math.Abs(index_a.I - index_b.I) > 1 || Math.Abs(index_a.J - index_b.J) > 1) {
+			FillStencil_element_X(grid, a, Center(a,b));
+			FillStencil_element_Y(grid, Center(a,b), b);
+		}		
+
+		int N = grid.N;		
+		Vec2 c = Center(a, b);
+		Vec2 n = Normal(a, b);
+
+		Index idx = ToStencilSystem(N, a, grid.bounds);
+		// Index idx = ToStencilSystem(N, new Vec2(c.X + n.X, c.Y + n.Y), grid.bounds);
+		int I = idx.I;
+		int J = idx.J;
+
+		if (n.X >= 0) {
+			for (int j = J+1; j < N && !grid.stencil_buffer[I*N + j]; j++) {
+				grid.stencil_buffer[I*N + j] = true;					
+			}					
+		}
+		if (n.X < 0) {
+			for (int j = J-1; j >= 0 && !grid.stencil_buffer[I*N + j]; j--) {
+				grid.stencil_buffer[I*N + j] = true;					
+			}					
+		}
+	}
+
+	public static void FillStencil_2 (Grid grid, Vec2[] boundary_nodes)
+	{
+		int N = grid.N;		
+		
+		for (int k = 0; k < N-1; k++) {
+			Vec2 a = boundary_nodes[k+0];
+			Vec2 b = boundary_nodes[k+1];
+			Vec2 c = Center(a, b);
+			Vec2 n = Normal(a, b);
+
+			FillStencil_element_Y(grid, a, b);
+		}
+
+		for (int k = 0; k < N-1; k++) {
+			Vec2 a = boundary_nodes[k+0];
+			Vec2 b = boundary_nodes[k+1];
+			Vec2 c = Center(a, b);
+			Vec2 n = Normal(a, b);
+			FillStencil_element_X(grid, a, b);
+
+		}
+
+		int offset = 0;
+		for (int i = 0; i < grid.N; i++) {
+			grid.indices[i] = offset;
+			
+			for (int j = 0; j < grid.N; j++) {
+				if (grid.stencil_buffer[i*grid.N + j]) {
+					offset += 1;
+				}
+			}
+		}
+	}
+
+	public static void Reverse (Grid grid)
+	{
+		int N = grid.N;
+		
+		for (int i = 0; i < N; i++)	{
+			for (int j = 0; j < N; j++) {
+				grid.stencil_buffer[i*N + j] = !grid.stencil_buffer[i*N + j];
+			}
+		}
+	}
+	
 	public static List<Vec2> MeshFromStencil (Grid grid)
 	{
 		List<Vec2> nodes = new List<Vec2>();
@@ -323,9 +465,18 @@ public static class Geo
 
 	public static int GetIndex (Grid grid, int I, int J)
 	{
-		int idx = grid.indices[I];
-		for (int j = 0; j <= J; j++) {
-			idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
+		// int idx = grid.indices[I];
+		// for (int j = 0; j <= J; j++) {
+		// 	idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
+		// }
+
+		// return idx;
+		
+		int idx = 0;
+		for (int i = 0; i <= I; i++) {
+			for (int j = 0; j <= J; j++) {
+				idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
+			}			
 		}
 
 		return idx;
@@ -397,6 +548,22 @@ public static class Geo
 
 		return vertices.ToArray();
 	}
+
+	public static bool[] ParseStencilBuffer (string path, char delimeter, int N)
+	{
+		var lines = File.ReadAllLines(path);
+		var stencil_buffer = new bool[N*N];
+
+		for (int i = 0; i < N; i++) {
+			if (lines[N-i-1].Length > 1) {  // the text file is upside-down !!
+				for (int j = 0; j < N; j++) {
+					stencil_buffer[i*N + j] = lines[N-i-1][j] == delimeter ? true : false;
+				}
+			}	
+		}
+
+		return stencil_buffer;
+	}
 }
 
 public static class Signal
@@ -462,6 +629,24 @@ public static class Signal
 		return idx;
 	}
 
+	public static int GetClosestPoint (Vec2 p, Vec2[] positions)
+	{
+		int idx = 0;
+		int K = positions.Length;
+		double r_min = Math.Sqrt((p.X - positions[0].X) * (p.X - positions[0].X) + (p.Y - positions[0].Y) * (p.Y - positions[0].Y));
+
+		for (int k = 0; k < K; k++) {			
+			double r = Math.Sqrt((p.X - positions[k].X) * (p.X - positions[k].X) + (p.Y - positions[k].Y) * (p.Y - positions[k].Y));
+			
+			if (r_min > r) {
+				r_min = r;
+				idx = k;
+			}			
+		}
+
+		return idx;		
+	}
+
 
 	/// <summary> ensure that antennas are INSIDE the domain !!! </summary>
 	public static void ConstrainAntennasPositions (Grid grid, Vec2[] antennas_pos, Vec2[] boundary_nodes)
@@ -492,6 +677,17 @@ public static class Signal
 		
 	}
 
+	static void MinMax (double[] values, ref double min, ref double max)
+	{
+		min = values[0];
+		max = values[0];
+
+		for (int i = 0; i < values.Length; i++) {
+			min = values[i] < min ? values[i] : min;
+			max = values[i] > max ? values[i] : max;
+		}
+	}
+
 	/// <summary> </summary>
 	/// <param name="signal_intensity"> the array that stores the intensities on each node of the mesh </param>
 	/// <param name="I_opt"> the intesity value used for the optimization, to compare against </param>
@@ -502,6 +698,9 @@ public static class Signal
 		double dx = (bounds.v_max.X - bounds.v_min.X) / (double)N;
 		double dy = (bounds.v_max.Y - bounds.v_min.Y) / (double)N;		
 
+		double min = 0, max = 0;
+		MinMax(signal_intensity, ref min, ref max);
+
 		for (int k = 0; k < antennas_pos.Length; k++) {
 			GradDirection dir = GradDirection.Self;
 			Index idx = Geo.ToStencilSystem(N, antennas_pos[k], bounds);
@@ -510,10 +709,10 @@ public static class Signal
 
 			Gradient grad = Geo.GetGradientAtNode(grid, i, j, signal_intensity);				
 
-			if (signal_intensity[Geo.GetIndex(grid, i, j)] > 8) {
+			if (signal_intensity[Geo.GetIndex(grid, i, j)] > 0.7 * max) {
 				dir = grad.SteepestDescend();
 			}
-			else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 4) {
+			else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 0.2  * max) {
 				dir = grad.SteepestAscend();
 			}
 			else {
@@ -552,9 +751,80 @@ public static class Signal
 				default:
 					break;				
 			}
-
-			ConstrainAntennasPositions(grid, antennas_pos, boundary_nodes);
 		}
+		ConstrainAntennasPositions(grid, antennas_pos, boundary_nodes);
+	}
+
+	/// <summary> </summary>
+	/// <param name="signal_intensity"> the array that stores the intensities on each node of the mesh </param>
+	/// <param name="I_opt"> the intesity value used for the optimization, to compare against </param>
+	public static void MoveAntennas_2 (Grid grid, Vec2[] antennas_pos, Vec2[] boundary_nodes, double[] signal_intensity)
+	{
+		int N = grid.N;
+		BoundingBox bounds = grid.bounds;
+		double dx = (bounds.v_max.X - bounds.v_min.X) / (double)N;
+		double dy = (bounds.v_max.Y - bounds.v_min.Y) / (double)N;		
+
+		double min = 0, max = 0;
+		MinMax(signal_intensity, ref min, ref max);
+		double mean = min + (max - min) /2;
+
+		for (int i = 0; i < N; i++) {
+			for (int j = 0; j < N; j++) {
+				if (grid.stencil_buffer[i*N + j]) {					
+					Gradient grad = Geo.GetGradientAtNode(grid, i, j, signal_intensity);				
+					GradDirection dir = GradDirection.Self;
+					Vec2 dv = new Vec2();
+
+					if (signal_intensity[Geo.GetIndex(grid, i, j)] > 0.7 * mean) {
+						dir = grad.SteepestAscend();
+					}
+					else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 0.2  * mean) {
+						dir = grad.SteepestDescend();
+					}
+
+					switch (dir) {
+				        case GradDirection.UL:
+				            dv.X -= dx; 
+				            dv.Y += dy;
+							break;
+				        case GradDirection.UC:
+				            dv.Y += dy;
+							break;
+				        case GradDirection.UR: 
+				            dv.X += dx;
+				            dv.Y += dy;
+							break;
+				        case GradDirection.CL: 
+				            dv.X -= dx;
+							break;
+				        case GradDirection.CR: 
+				            dv.X += dx;
+							break;
+				        case GradDirection.LL: 
+				            dv.X -= dx;
+				            dv.Y -= dy;
+							break;
+				        case GradDirection.LC: 
+				            dv.Y -= dy;
+							break;
+				        case GradDirection.LR: 
+				            dv.X += dx;
+				            dv.Y -= dy;
+							break;				
+						default:
+							break;				
+					}
+
+					Vec2 p = Geo.ToCartesianSystem(grid, i, j);
+					int k = GetClosestPoint(p, antennas_pos);
+					antennas_pos[k].X -= dv.X;
+					antennas_pos[k].Y -= dv.Y;
+				}
+			}
+		}
+
+		ConstrainAntennasPositions(grid, antennas_pos, boundary_nodes);		
 	}
 }
 
@@ -578,6 +848,43 @@ public static class Writer
 		}
 	}
 
+
+	public static void WriteBoundaryStencil (string path, Vec2[] boundary_nodes, int N, char delimeter_true, char delimeter_false)
+	{
+		var grid = Geo.StencilFromBoundaryNodes(boundary_nodes, N);
+		using var fs = System.IO.File.CreateText(path);		
+
+		for (int i = N-1; i >= 0; i--) {
+			for (int j = 0; j < N; j++) {
+				if (grid.stencil_buffer[i*N + j]) {
+					fs.Write(delimeter_true);
+				}
+				else {
+					fs.Write(delimeter_false);					
+				}		
+			}
+			fs.Write("\n");
+		}
+	}
+	
+	public static void WriteGridStencil (string path, Grid grid, char delimeter_true, char delimeter_false)
+	{
+		using var fs = System.IO.File.CreateText(path);		
+		int N = grid.N;
+		
+		for (int i = N-1; i >= 0; i--) {
+			for (int j = 0; j < N; j++) {
+				if (grid.stencil_buffer[i*N + j]) {
+					fs.Write(delimeter_true);
+				}
+				else {
+					fs.Write(delimeter_false);					
+				}		
+			}
+			fs.Write("\n");
+		}
+	}
+	
 	public static void WriteVertices (string path, Grid grid)
 	{
 		int N = grid.N;
