@@ -463,24 +463,24 @@ public static class Geo
 		return nodes;
 	}
 
-	public static int GetIndex (Grid grid, int I, int J)
-	{
-		// int idx = grid.indices[I];
-		// for (int j = 0; j <= J; j++) {
-		// 	idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
-		// }
+	// public static int GetIndex (Grid grid, int I, int J)
+	// {
+	// 	// int idx = grid.indices[I];
+	// 	// for (int j = 0; j <= J; j++) {
+	// 	// 	idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
+	// 	// }
 
-		// return idx;
+	// 	// return idx;
 		
-		int idx = 0;
-		for (int i = 0; i <= I; i++) {
-			for (int j = 0; j <= J; j++) {
-				idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
-			}			
-		}
+	// 	int idx = 0;
+	// 	for (int i = 0; i <= I; i++) {
+	// 		for (int j = 0; j <= J; j++) {
+	// 			idx += (grid.stencil_buffer[I*grid.N + j]) ? 1 : 0;
+	// 		}			
+	// 	}
 
-		return idx;
-	}
+	// 	return idx;
+	// }
 
 	public static Gradient GetGradientAtNode (Grid grid, int i, int j, double[] values)
 	{
@@ -498,34 +498,43 @@ public static class Geo
 		double dx = (bounds.v_max.X - bounds.v_min.X) / (double)N;
 		double dy = (bounds.v_max.Y - bounds.v_min.Y) / (double)N;		
 		double dr = Math.Sqrt(dx*dx + dy*dy);
-		double node_value = values[GetIndex(grid, i,j)];
+		// double node_value = values[GetIndex(grid, i,j)];
+		double node_value = values[i*N + j];
 		Gradient grad = new Gradient();
 
 		if (j > 0 && grid.stencil_buffer[i*N + j-1]) {
-			grad.CL = (node_value - values[GetIndex(grid, i, j-1)]) / dx;
+			// grad.CL = (node_value - values[GetIndex(grid, i, j-1)]) / dx;
+			grad.CL = (node_value - values[i*N + j-1]) / dx;
 		}
 		if (j < N-1 && grid.stencil_buffer[i*N + j+1]) {
-			grad.CR = (node_value - values[GetIndex(grid, i, j+1)]) / dx;			
+			// grad.CR = (node_value - values[GetIndex(grid, i, j+1)]) / dx;			
+			grad.CR = (node_value - values[i*N + j+1]) / dx;			
 		}
 
 		if (j > 0 && i > 0 && grid.stencil_buffer[(i-1)*N + j-1]) {
-			grad.LL = (node_value - values[GetIndex(grid, i-1, j-1)]) / dr;
+			// grad.LL = (node_value - values[GetIndex(grid, i-1, j-1)]) / dr;
+			grad.LL = (node_value - values[(i-1)*N + j-1]) / dr;
 		}
 		if (i > 0 && grid.stencil_buffer[(i-1)*N + j]) {
-			grad.LC = (node_value - values[GetIndex(grid, i-1, j)]) / dy;
+			// grad.LC = (node_value - values[GetIndex(grid, i-1, j)]) / dy;
+			grad.LC = (node_value - values[(i-1)*N + j]) / dy;
 		}
 		if (j < N-1 && i > 0 && grid.stencil_buffer[(i-1)*N + j+1]) {
-			grad.LR = (node_value - values[GetIndex(grid, i-1, j+1)]) / dr;
+			// grad.LR = (node_value - values[GetIndex(grid, i-1, j+1)]) / dr;
+			grad.LR = (node_value - values[(i-1)*N + j+1]) / dr;
 		}
 
 		if (j > 0 && i < N-1 && grid.stencil_buffer[(i+1)*N + j-1]) {
-			grad.UL = (node_value - values[GetIndex(grid, i+1, j-1)]) / dr;
+			// grad.UL = (node_value - values[GetIndex(grid, i+1, j-1)]) / dr;
+			grad.UL = (node_value - values[(i+1)*N + j-1]) / dr;
 		}
 		if (i < N-1 && grid.stencil_buffer[(i+1)*N + j]) {
-			grad.UC = (node_value - values[GetIndex(grid, i+1, j)]) / dy;
+			// grad.UC = (node_value - values[GetIndex(grid, i+1, j)]) / dy;
+			grad.UC = (node_value - values[(i+1)*N + j]) / dy;
 		}
 		if (j < N-1 && i < N-1 && grid.stencil_buffer[(i+1)*N + j+1]) {
-			grad.UR = (node_value - values[GetIndex(grid, i+1, j+1)]) / dr;
+			// grad.UR = (node_value - values[GetIndex(grid, i+1, j+1)]) / dr;
+			grad.UR = (node_value - values[(i+1)*N + j+1]) / dr;
 		}
 
 		return grad;
@@ -673,6 +682,19 @@ public static class Signal
 				i = idx.I;
 				j = idx.J;
 			}
+
+			while ((i < 0 || i > N-1) || (j < 0 || j > N-1)) {
+				int ii = System.Random.Shared.Next(N);
+				int jj = System.Random.Shared.Next(N);
+				while (!grid.stencil_buffer[ii*N + jj]) {
+					ii = System.Random.Shared.Next(N);
+					jj = System.Random.Shared.Next(N);					
+				}
+				antennas_pos[k] = Geo.ToCartesianSystem(grid, ii, jj);
+				idx = Geo.ToStencilSystem(N, antennas_pos[k], bounds);
+				i = idx.I;
+				j = idx.J;
+			}
 		}
 		
 	}
@@ -700,6 +722,7 @@ public static class Signal
 
 		double min = 0, max = 0;
 		MinMax(signal_intensity, ref min, ref max);
+		double mean = min + (max - min) /2;
 
 		for (int k = 0; k < antennas_pos.Length; k++) {
 			GradDirection dir = GradDirection.Self;
@@ -708,49 +731,116 @@ public static class Signal
 			int j = idx.J;
 
 			Gradient grad = Geo.GetGradientAtNode(grid, i, j, signal_intensity);				
+			if ((i < 0 || i > N-1) || (j < 0 || j > N-1)) continue; // Console.WriteLine("{0},{0}", i, j);
 
-			if (signal_intensity[Geo.GetIndex(grid, i, j)] > 0.7 * max) {
+			// if (signal_intensity[Geo.GetIndex(grid, i, j)] > 0.7 * max) {
+			if (signal_intensity[i*N + j] > 0.7 * mean) {
 				dir = grad.SteepestDescend();
+				switch (dir) {
+			        case GradDirection.UL:
+			            antennas_pos[k].X += dx; 
+			            antennas_pos[k].Y -= dy;
+						break;
+			        case GradDirection.UC:
+			            antennas_pos[k].Y -= dy;
+						break;
+			        case GradDirection.UR: 
+			            antennas_pos[k].X -= dx;
+			            antennas_pos[k].Y -= dy;
+						break;
+			        case GradDirection.CL: 
+			            antennas_pos[k].X += dx;
+						break;
+			        case GradDirection.CR: 
+			            antennas_pos[k].X -= dx;
+						break;
+			        case GradDirection.LL: 
+			            antennas_pos[k].X += dx;
+			            antennas_pos[k].Y += dy;
+						break;
+			        case GradDirection.LC: 
+			            antennas_pos[k].Y += dy;
+						break;
+			        case GradDirection.LR: 
+			            antennas_pos[k].X -= dx;
+			            antennas_pos[k].Y += dy;
+						break;				
+					default:
+						break;				
+				}
 			}
-			else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 0.2  * max) {
+			// else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 0.2  * max) {
+			else if (signal_intensity[i*N + j] < 0.2  * mean) {
 				dir = grad.SteepestAscend();
+				switch (dir) {
+			        case GradDirection.UL:
+			            antennas_pos[k].X -= dx; 
+			            antennas_pos[k].Y += dy;
+						break;
+			        case GradDirection.UC:
+			            antennas_pos[k].Y += dy;
+						break;
+			        case GradDirection.UR: 
+			            antennas_pos[k].X += dx;
+			            antennas_pos[k].Y += dy;
+						break;
+			        case GradDirection.CL: 
+			            antennas_pos[k].X -= dx;
+						break;
+			        case GradDirection.CR: 
+			            antennas_pos[k].X += dx;
+						break;
+			        case GradDirection.LL: 
+			            antennas_pos[k].X -= dx;
+			            antennas_pos[k].Y -= dy;
+						break;
+			        case GradDirection.LC: 
+			            antennas_pos[k].Y -= dy;
+						break;
+			        case GradDirection.LR: 
+			            antennas_pos[k].X += dx;
+			            antennas_pos[k].Y -= dy;
+						break;				
+					default:
+						break;				
+				}
 			}
 			else {
 				dir = GradDirection.Self;
 			}
 
-			switch (dir) {
-		        case GradDirection.UL:
-		            antennas_pos[k].X -= dx; 
-		            antennas_pos[k].Y += dy;
-					break;
-		        case GradDirection.UC:
-		            antennas_pos[k].Y += dy;
-					break;
-		        case GradDirection.UR: 
-		            antennas_pos[k].X += dx;
-		            antennas_pos[k].Y += dy;
-					break;
-		        case GradDirection.CL: 
-		            antennas_pos[k].X -= dx;
-					break;
-		        case GradDirection.CR: 
-		            antennas_pos[k].X += dx;
-					break;
-		        case GradDirection.LL: 
-		            antennas_pos[k].X -= dx;
-		            antennas_pos[k].Y -= dy;
-					break;
-		        case GradDirection.LC: 
-		            antennas_pos[k].Y -= dy;
-					break;
-		        case GradDirection.LR: 
-		            antennas_pos[k].X += dx;
-		            antennas_pos[k].Y -= dy;
-					break;				
-				default:
-					break;				
-			}
+			// switch (dir) {
+		 //        case GradDirection.UL:
+		 //            antennas_pos[k].X -= dx; 
+		 //            antennas_pos[k].Y += dy;
+			// 		break;
+		 //        case GradDirection.UC:
+		 //            antennas_pos[k].Y += dy;
+			// 		break;
+		 //        case GradDirection.UR: 
+		 //            antennas_pos[k].X += dx;
+		 //            antennas_pos[k].Y += dy;
+			// 		break;
+		 //        case GradDirection.CL: 
+		 //            antennas_pos[k].X -= dx;
+			// 		break;
+		 //        case GradDirection.CR: 
+		 //            antennas_pos[k].X += dx;
+			// 		break;
+		 //        case GradDirection.LL: 
+		 //            antennas_pos[k].X -= dx;
+		 //            antennas_pos[k].Y -= dy;
+			// 		break;
+		 //        case GradDirection.LC: 
+		 //            antennas_pos[k].Y -= dy;
+			// 		break;
+		 //        case GradDirection.LR: 
+		 //            antennas_pos[k].X += dx;
+		 //            antennas_pos[k].Y -= dy;
+			// 		break;				
+			// 	default:
+			// 		break;				
+			// }
 		}
 		ConstrainAntennasPositions(grid, antennas_pos, boundary_nodes);
 	}
@@ -776,10 +866,10 @@ public static class Signal
 					GradDirection dir = GradDirection.Self;
 					Vec2 dv = new Vec2();
 
-					if (signal_intensity[Geo.GetIndex(grid, i, j)] > 0.7 * mean) {
+					if (signal_intensity[i*N + j] > 0.7 * mean) {
 						dir = grad.SteepestAscend();
 					}
-					else if (signal_intensity[Geo.GetIndex(grid, i, j)] < 0.2  * mean) {
+					else if (signal_intensity[i*N + j] < 0.2  * mean) {
 						dir = grad.SteepestDescend();
 					}
 

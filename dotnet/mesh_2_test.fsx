@@ -23,7 +23,7 @@ let _        = Geo.FillStencil(grid)
 // let _        = Geo.FillStencil_2(grid,boundary_nodes)
 let nodes    = Geo.MeshFromStencil(grid)
 let antennas = Signal.InitialAntennasPositions(nodes, 6)
-let signal_intensity = Array.zeroCreate<double> (nodes.Count)
+let signal_intensity = Array.zeroCreate<double> (N*N)
 let I_opt = 8.
 
 // do
@@ -55,20 +55,24 @@ let obj_fn () =
     let mutable diff = 0.
     Array.Clear signal_intensity
     
-    for j in 0..nodes.Count-1 do
-        let x  = nodes[j].X 
-        let y  = nodes[j].Y
-        let Nn = double N
-        // clear signals buffer
-        for k in 0..antennas.Length-1 do
-            let p = antennas[k]
-            let A  = 1.      // amplitude
-            let x0 = p.X      // center x
-            let y0 = p.Y      // center y
-            let s_x = (Nn*Nn / 8.) * dv_x / double(nodes.Count)   // x spread of the blob
-            let s_y = (Nn*Nn / 8.) * dv_y / double(nodes.Count)   // y spread of the blob
-            signal_intensity[j] <- signal_intensity[j] + Signal.Gaussian(A, x, x0, y, y0, s_x, s_y)
-        diff <- diff + abs(signal_intensity[j] - I_opt)
+    for i in 0..N-1 do
+        for j in 0..N-1 do
+            if grid.stencil_buffer[i*N + j] then
+                let v = Geo.ToCartesianSystem(grid, i, j)
+                let x = v.X
+                let y = v.Y
+                for k in 0..antennas.Length-1 do
+                    let p = antennas[k]
+                    let A  = 1.      // amplitude
+                    let x0 = p.X      // center x
+                    let y0 = p.Y      // center y
+                    // let s_x = (Nn*Nn / 8.) * dv_x / double(nodes.Count)   // x spread of the blob
+                    // let s_y = (Nn*Nn / 8.) * dv_y / double(nodes.Count)   // y spread of the blob
+                    let s_x = 0.15 * dv_x
+                    let s_y = 0.15 * dv_y
+                    signal_intensity[i*N + j] <- signal_intensity[i*N + j] + Signal.Gaussian(A, x, x0, y, y0, s_x, s_y)
+                // diff <- diff + abs(signal_intensity[i*N + j] - I_opt)
+                diff <- diff + abs(signal_intensity[i*N + j] - 0.5)
     diff
     
 
@@ -76,6 +80,13 @@ let obj_fn () =
 Signal.InitialAntennasPositions(nodes, 6)
 
 let gif = System.IO.File.CreateText("animation_gif.dat")
+do
+    for i in 0..5 do
+        let x = antennas[i].X
+        let y = antennas[i].Y
+        gif.WriteLine($"{x}  {y}")
+    gif.WriteLine("\n")
+
 let n_iter_max = 60
 let mutable n_iter = 0
 while obj_fn() > 1e-3 && n_iter <= n_iter_max do
@@ -140,8 +151,15 @@ Gnuplot()
 |> ignore
 
 
+let si = [|
+    for i in 0..N-1 do
+        for j in 0..N-1 do
+            if grid.stencil_buffer[i*N + j] then
+                yield signal_intensity[i*N + j]
+|]
+
 Gnuplot()
-|> Gnuplot.datablockXYZ vx vy signal_intensity "vertices"
+|> Gnuplot.datablockXYZ vx vy si "vertices"
 |> Gnuplot.datablockXY bx by "coordinates"
 |> Gnuplot.datablockXY (antennas |> Array.map (fun v -> v.X)) (antennas |> Array.map (fun v -> v.Y)) "antennas"
 |>> "set terminal png size 840,580"
