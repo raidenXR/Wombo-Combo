@@ -178,6 +178,25 @@ public static class GeoRandomizer
 		return mesh;
 	}
 
+	public static Gradient GetGradient (Vec2[,] mesh, double[,] signal, int i, int j)
+	{
+		Vec2 p = mesh[i,j];
+		double s = signal[i,j];
+
+		return new Gradient{
+			LL = (s - signal[i-1,j-1]) / (p - mesh[i-1,j-1]).Length(),
+			LC = (s - signal[i-1,j+0]) / (p - mesh[i-1,j+0]).Length(),
+			LR = (s - signal[i-1,j+1]) / (p - mesh[i-1,j+1]).Length(),
+			
+			UL = (s - signal[i+1,j-1]) / (p - mesh[i-1,j-1]).Length(),
+			UC = (s - signal[i+1,j+0]) / (p - mesh[i-1,j+0]).Length(),
+			UR = (s - signal[i+1,j+1]) / (p - mesh[i-1,j+1]).Length(),
+
+			CL = (s - signal[i,j-1]) / (p - mesh[i,j-1]).Length(),
+			CR = (s - signal[i,j+1]) / (p - mesh[i,j+1]).Length(),
+		};
+	}
+
 	public static void WriteCorrectGrid (string path, Vec2[,] mesh, int Imax, int Jmax)
 	{
 		var fs = System.IO.File.CreateText(path);

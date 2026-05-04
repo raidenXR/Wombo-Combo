@@ -10,6 +10,10 @@ public struct Vec2
 		Y = y;
 	}
 
+	public double Length() {
+		return Math.Sqrt(X*X + Y*Y);
+	}
+
 	public static Vec2 operator - (Vec2 a, Vec2 b) {
 		return new Vec2(a.X - b.X, a.Y - b.Y);
 	}

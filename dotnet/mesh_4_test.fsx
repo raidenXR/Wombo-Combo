@@ -21,6 +21,7 @@ let r = Array.zeroCreate<Vec2> N
 let d = Array.zeroCreate<Vec2> N
 let u = Array.zeroCreate<Vec2> N
 
+
 // let normal_mesh = Array2D.zeroCreate<Vec2> N N
 // for i in 0..N-1 do
 //     for j in 0..N-1 do
@@ -43,6 +44,103 @@ for i in 0..N-1 do
 let sides = GeoRandomizer.RandomSides(l, r, d, u)
 let bounds = GeoRandomizer.SidesToBoundaryNodes(sides, N)
 let mesh = GeoRandomizer.MeshFromRandomizer(sides, N, N)
+let signal = Array2D.zeroCreate<double> N N
+
+let (antennas_pos, antennas_idx) = 
+    let antennas = ResizeArray<Vec2>()
+    let mutable i = Random.Shared.Next(1,N-2)
+    let mutable j = Random.Shared.Next(1,N-2)
+    let mutable cached = [(i,j)]
+    antennas.Add(mesh[i,j])
+
+    for n in 0..5 do
+        while ((List.contains (i,j) cached) && antennas.Count < 6) do
+            i <- Random.Shared.Next(1,N-2)
+            j <- Random.Shared.Next(1,N-2)
+        antennas.Add(mesh[i,j])
+        cached <- (i,j)::cached
+                
+    (Array.ofSeq antennas, Array.ofList cached)
+
+
+let create_map N (table:double[,]) (tag:string) =
+    let sb = new System.Text.StringBuilder(1000)
+    sb.AppendLine("$" + tag + " << EOD") |> ignore
+
+    for i in 0..N-1 do
+        for j in 0..N-1 do
+            let d = table[i,j]
+            let x = mesh[i,j].X
+            let y = mesh[i,j].Y
+            sb.AppendLine($"{x} {y} {d}").Append(" ") |> ignore
+        sb.AppendLine("\n") |> ignore
+    sb.AppendLine("EOD").ToString()
+    
+
+let compute_signal_intensity () = 
+    // compute signal intensity
+    for k in 0..5 do
+        let dv_x = (B-A).X
+        let dv_y = (C-A).Y
+        let x0 = antennas_pos[k].X
+        let y0 = antennas_pos[k].Y
+
+        for i in 0..N-1 do
+            for j in 0..N-1 do
+                let A  = 1.      // amplitude
+                let x = mesh[i,j].X
+                let y = mesh[i,j].Y
+                let sx = 0.15 * dv_x
+                let sy = 0.15 * dv_y
+                signal[i,j] <- Signal.Gaussian(A, x, x0, y, y0, sx, sy)
+
+
+// Optimization step
+let max_iters = 30
+for n in 1..max_iters do
+    compute_signal_intensity()
+    let mutable s = 0.
+    for k in 0..antennas_idx.Length-1 do
+        let (i,j) = antennas_idx[k]
+        s <- s + signal[i,j]
+        s <- s / 6.
+
+    for k in 0..antennas_idx.Length-1 do
+        let (i,j) = antennas_idx[k]
+        printfn "%d, %d" i j
+        if signal[i,j] > 1.2 * s then
+            let I,J =
+                match (GeoRandomizer.GetGradient(mesh, signal, i,j).SteepestDescend()) with
+                | GradDirection.LL -> (i-1,j-1)
+                | GradDirection.LC -> (i-1,j+0)
+                | GradDirection.LR -> (i-1,j+1)
+                | GradDirection.UL -> (i+1,j-1)
+                | GradDirection.UC -> (i+1,j+0)
+                | GradDirection.UR -> (i+1,j+1)
+                | GradDirection.CL -> (i,j-1)
+                | GradDirection.CR -> (i,j+1)
+                | _ -> (i,j)
+            antennas_idx[k] <- (Math.Clamp(I, 1, N-2), Math.Clamp(J,1,N-2))
+            antennas_pos[k] <- mesh[fst antennas_idx[k], snd antennas_idx[k]]
+        if signal[i,j] < 0.4 * s then
+            let I,J = 
+                match (GeoRandomizer.GetGradient(mesh, signal, i,j).SteepestAscend()) with
+                | GradDirection.LL -> (i-1,j-1)
+                | GradDirection.LC -> (i-1,j+0)
+                | GradDirection.LR -> (i-1,j+1)
+                | GradDirection.UL -> (i+1,j-1)
+                | GradDirection.UC -> (i+1,j+0)
+                | GradDirection.UR -> (i+1,j+1)
+                | GradDirection.CL -> (i,j-1)
+                | GradDirection.CR -> (i,j+1)
+                | _ -> (i,j)
+            antennas_idx[k] <- (Math.Clamp(I, 1, N-2), Math.Clamp(J,1,N-2))
+            antennas_pos[k] <- mesh[fst antennas_idx[k], snd antennas_idx[k]]
+        
+
+for k in 0..5 do
+    printfn "%s" (string antennas_pos[k])
+            
 
 GeoRandomizer.CheckUnitialized(mesh, N-1, N-1)
 
@@ -63,4 +161,28 @@ Gnuplot()
 |>> $"'{out_nodes}' with lines lc rgb 'black'"
 |> Gnuplot.run
 |> ignore
+
+let tabular_data = create_map N signal "signal"
+// printfn "%s" tabular_data
+
+let plt = Gnuplot()
+plt.writeln (tabular_data)
+
+plt
+|> Gnuplot.datablockXY (antennas_pos |> Array.map (fun v -> v.X)) (antennas_pos |> Array.map (fun v -> v.Y)) "antennas"
+|>> "set terminal png size 840,580"
+|>> "set output 'correct_contour_compare_4.png'"
+|>> "unset key"
+// |>> "set isosample 250,250"
+|>> "set view map"
+|>> "set palette rgbformulae 33,13,10"
+// |>> "set pm3d map impl"
+// |>> "unset surface"
+|>> "set contour"
+|>> "set dgrid3d"
+|>> "set cntrparam cubicspline"
+|>> "splot '$signal' with pm3d notitle, '$antennas' using 1:2:(0) with points lc rgb 'black' lw 3"
+|> Gnuplot.run
+|> ignore
+
 
