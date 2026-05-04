@@ -26,10 +26,10 @@ let antennas = Signal.InitialAntennasPositions(nodes, 6)
 let signal_intensity = Array.zeroCreate<double> (N*N)
 let I_opt = 8.
 
-// do
-//     Writer.WriteGridStencil("stencil_full.txt", grid, '*', ' ')
-//     Writer.WriteVertices(out_nodes, grid)
-//     Writer.WriteBoundaryStencil("stencil.txt", boundary_nodes, N)
+do
+    // Writer.WriteGridStencil("stencil_full.txt", grid, '*', ' ')
+    Writer.WriteVertices(out_nodes, grid)
+    // Writer.WriteBoundaryStencil("stencil.txt", boundary_nodes, N)
 
 // these are just for plotting
 let bx = boundary_nodes |> Seq.map (fun v -> v.X) |> Array.ofSeq
@@ -122,18 +122,18 @@ gif.Close()
 // |> Gnuplot.run
 // |> ignore
 
-// Gnuplot()
-// |> Gnuplot.datablockXY bx by "coordinates"
-// |> Gnuplot.datablockXY vx vy "vertices"
-// |> Gnuplot.datablockXY nx ny "normals"
-// |>> "set terminal png size 840,580"
-// |>> "set output 'grid.png'"
-// |>> "unset key"
-// |>> "plot $coordinates using 1:2 with lines lc rgb 'black' lw 2, \\"
-// // |>> "$normals using 1:2 with lp lc rgb 'red' lw 2, \\"
-// |>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
-// |> Gnuplot.run
-// |> ignore
+Gnuplot()
+|> Gnuplot.datablockXY bx by "coordinates"
+|> Gnuplot.datablockXY vx vy "vertices"
+|> Gnuplot.datablockXY nx ny "normals"
+|>> "set terminal png size 840,580"
+|>> "set output 'grid.png'"
+|>> "unset key"
+|>> "plot $coordinates using 1:2 with lines lc rgb 'black' lw 2, \\"
+// |>> "$normals using 1:2 with lp lc rgb 'red' lw 2, \\"
+|>> $"'{out_nodes}' using 1:2 with lines lc rgb 'black'"
+|> Gnuplot.run
+|> ignore
 
 
 Gnuplot()

@@ -9,6 +9,31 @@ public struct Vec2
 		X = x;
 		Y = y;
 	}
+
+	public static Vec2 operator - (Vec2 a, Vec2 b) {
+		return new Vec2(a.X - b.X, a.Y - b.Y);
+	}
+
+	public static Vec2 operator + (Vec2 a, Vec2 b) {
+		return new Vec2(a.X + b.X, a.Y + b.Y);
+	}
+
+	public static Vec2 operator / (Vec2 v, double d) {
+		return new Vec2(v.X / d, v.Y / d);
+	}
+	
+	public static Vec2 operator * (double d, Vec2 v) {
+		return new Vec2(v.X * d, v.Y * d);
+	}
+
+	public static Vec2 operator * (Vec2 v, double d) {
+		return new Vec2(v.X * d, v.Y * d);
+	}
+
+	public override string ToString()
+	{
+		return $"({X}, {Y})";
+	}
 }
 
 public struct BoundingBox
@@ -461,6 +486,56 @@ public static class Geo
 		}
 
 		return nodes;
+	}
+
+	public static Vec2[,] CreateCorrectWhateverGrid (Grid grid, int N)
+	{
+		// Vec2[,] points = new Vec2[N+1, N+1];
+		Vec2[,] points = new Vec2[N, N];
+
+		for (int i = 0; i < grid.N; i++) {
+			int lhs = 0;
+			int rhs = grid.N-1;
+			while (!grid.stencil_buffer[i*grid.N + lhs] && lhs < N) lhs++;
+			while (!grid.stencil_buffer[i*grid.N + rhs] && rhs > 0) rhs--;			
+			// lhs = lhs >= 1 ? lhs - 1 : lhs;
+			// rhs = lhs < N-1 ? rhs + 1 : lhs;
+
+			double a = ToCartesianSystem(grid, i, lhs).X;
+			double b = ToCartesianSystem(grid, i, rhs).X;
+			
+			double x_min = Math.Min(a, b);
+			double x_max = Math.Max(a, b);
+			double dx = (x_max - x_min) / (N-1);
+
+			for (int j = 0; j < N; j++) {
+				points[i,j].X = x_min + j * dx;
+			}
+		}
+		
+		for (int j = 0; j < grid.N; j++) {
+			int lhs = 0;
+			int rhs = grid.N-1;
+			while (!grid.stencil_buffer[rhs*grid.N + j] && rhs > 0) rhs--;			
+			while (!grid.stencil_buffer[lhs*grid.N + j] && lhs < N) lhs++;
+
+			double a = ToCartesianSystem(grid, lhs, j).Y;
+			double b = ToCartesianSystem(grid, rhs, j).Y;
+			
+			double y_min = Math.Min(a, b);
+			double y_max = Math.Max(a, b);
+			double dy = (y_max - y_min) / (N-1);
+			Console.WriteLine("dy: {0}", dy);
+
+			// for (int i = N-1; i > 0; i--) {
+			for (int i = 0; i < N; i++) {
+				var p = ToCartesianSystem(grid, i, j).Y;
+				points[i,j].Y = y_min + i * dy;
+				// points[i,j].Y = p;
+			}
+		}
+		
+		return points;
 	}
 
 	// public static int GetIndex (Grid grid, int I, int J)
@@ -920,6 +995,35 @@ public static class Signal
 
 public static class Writer
 {
+	public static void WriteCorrectGrid (string path, Vec2[,] mesh, int N)
+	{
+		var fs = System.IO.File.CreateText(path);
+
+		for (int i = 0; i < N; i++) {			
+			for (int j = 1; j < N; j++) {
+				Vec2 p1 = mesh[i,j-1];					
+				Vec2 p2 = mesh[i,j-0];
+
+				fs.WriteLine($"{p1.X}  {p1.Y}");
+				fs.WriteLine($"{p2.X}  {p2.Y}");
+				fs.WriteLine("\n");
+			}
+		}
+		
+		for (int i = 1; i < N; i++) {
+			for (int j = 0; j < N; j++) {			
+				Vec2 p1 = mesh[i-1,j];					
+				Vec2 p2 = mesh[i-0,j];
+
+				fs.WriteLine($"{p1.X}  {p1.Y}");
+				fs.WriteLine($"{p2.X}  {p2.Y}");
+				fs.WriteLine("\n");
+			}
+		}
+
+		fs.Close();
+	}
+
 	public static void WriteBoundaryStencil (string path, Vec2[] boundary_nodes, int N)
 	{
 		var grid = Geo.StencilFromBoundaryNodes(boundary_nodes, N);
