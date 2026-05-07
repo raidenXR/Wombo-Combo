@@ -31,20 +31,20 @@ public static class GeoRandomizer
 		double dy = (y_max - y_min) / N;
 
 		for (int i = 0; i < N; i++) {
-			double x = x_min + i * dx;
-			double y = y_min + i * dy;
+			// double x = x_min + i * dx;
+			// double y = y_min + i * dy;
 			
-			double noise_x = dx * 0.5 - R.NextDouble();   // +- 0.5
-			l[i].X += noise_x;
+			// double noise_x = dx * 0.5 - R.NextDouble();   // +- 0.5
+			// l[i].X += noise_x;
 
-			noise_x = dx * 0.5 - R.NextDouble();   // +- 0.5
-			r[i].X += noise_x;
+			// noise_x = dx * 0.5 - R.NextDouble();   // +- 0.5
+			// r[i].X += noise_x;
 
-			double noise_y = dy * 0.5 - R.NextDouble();   // +- 0.5
-			u[i].Y += noise_y;
+			// double noise_y = dy * 0.5 - R.NextDouble();   // +- 0.5
+			// u[i].Y += noise_y;
 
-			noise_y = dy * 0.5 - R.NextDouble();   // +- 0.5
-			d[i].Y += noise_y;
+			// noise_y = dy * 0.5 - R.NextDouble();   // +- 0.5
+			// d[i].Y += noise_y;
 		}
 
 		d[0] = l[0]; 
@@ -106,6 +106,27 @@ public static class GeoRandomizer
 
 		return nodes;
 	}
+
+	public static Vec2[] BoundsFromMesh (Vec2[,] mesh, int Imax, int Jmax)
+	{
+		// Vec2[] boundarary_nodes = new Vec2[2*Imax + 2*Jmax];
+		List<Vec2> nodes = new List<Vec2>(1000);
+
+		for (int i = 0; i < Imax; i++) {
+			nodes.Add(mesh[i,0]);
+		}
+		for (int j = 0; j < Jmax; j++) {
+			nodes.Add(mesh[0,j]);	
+		}
+		for (int i = Imax-1; i >= 0; i--) {
+			nodes.Add(mesh[i,Jmax-1-1]);
+		}
+		for (int j = Jmax-1; j >= 0; j--) {
+			nodes.Add(mesh[Imax-1-1,j]);	
+		}
+
+		return nodes.ToArray();
+	}
 	
 	public static void WriteBoundaryNodes (Sides sides, string path, int N)
 	{
@@ -145,33 +166,53 @@ public static class GeoRandomizer
 		// copy boundaries
 		for (int i = 0; i < Imax; i++) {
 			mesh[i,0] = sides.L[i];
-			mesh[i,Imax-1] = sides.R[i];
+			mesh[i,Jmax-1] = sides.R[i];
 		}
 		for (int j = 0; j < Jmax; j++) {
 			mesh[0,j] = sides.D[j];
-			mesh[Jmax-1,j] = sides.U[j];
+			mesh[Imax-1,j] = sides.U[j];
 		}
 
-		for (int i = 1; i < Imax-1; i++) {
-			Vec2 dη = (sides.U[i] - sides.D[i]) / (double)Imax;
 
-			for (int j = 1; j < Jmax-1; j++) {
-				Vec2 dξ = (sides.R[j] - sides.L[j]) / (double)Jmax;
+		int L1 = Imax % 2 == 0 ? Imax / 2 : (Imax / 2) + 1;
+		int L2 = Jmax % 2 == 0 ? Jmax / 2 : (Jmax / 2) + 1;
+		
+		for (int i = 0; i < Imax; i++) {
+			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)Jmax;
 
-				// mesh[i,j].X = sides.L[i].X + j * dξ.X;		
-				// mesh[i,j].Y = sides.D[i].Y + i * dη.Y;		
-				// mesh[i,j] = (mesh[i-1,j] + mesh[i,j-1]) / 2;
-				// mesh[i,j].X = mesh[i,j-1].X;
-				// mesh[i,j].Y = mesh[i-1,j].Y;
-				// mesh[i,j] = mesh[i-1,j-1];
-				// mesh[i,j] += (dξ - dη);
-				// mesh[i,j] = sides.L[0] + (sides.L[j] - sides.L[0]) + (sides.D[i] - sides.D[0]); 
-				// mesh[i,j].X = sides.L[i].X + j * dξ.X;
-				// mesh[i,j].Y = sides.D[i].Y + i * dη.Y;
+			for (int j = 0; j <= L2; j++) {
+				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)Imax;
 
 				double x = sides.L[i].X + j * (sides.R[i].X - sides.L[i].X) / Jmax;
 				double y = sides.D[j].Y + i * (sides.U[j].Y - sides.D[j].Y) / Imax;
-				mesh[i,j] = new Vec2(x, y) + dξ + dη;
+				// mesh[i,j] = new Vec2(x, y) + dξ + dη;
+				mesh[i,j] = new Vec2(x, y);
+			}
+			// for (int j = Jmax-1; j > L2; j--) {
+			// 	Vec2 dξ = (sides.R[j] - sides.L[j]) / (double)Jmax;
+
+			// 	double x = sides.R[i].X - j * (sides.R[i].X - sides.L[i].X) / Jmax;
+			// 	double y = sides.D[j].Y + i * (sides.U[j].Y - sides.D[j].Y) / Imax;
+			// 	mesh[i,j] = new Vec2(x, y) + dξ + dη;
+			// }
+		}
+		for (int i = Imax-1; i >= 0; i--) {
+			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)Jmax;
+
+			// for (int j = 1; j <= L2; j++) {
+			// 	Vec2 dξ = (sides.R[j] - sides.L[j]) / (double)Jmax;
+
+			// 	double x = sides.L[i].X + j * (sides.R[i].X - sides.L[i].X) / Jmax;
+			// 	double y = sides.U[j].Y - i * (sides.U[j].Y - sides.D[j].Y) / Imax;
+			// 	mesh[i,j] = new Vec2(x, y) + dξ + dη;
+			// }
+			for (int j = Jmax-1; j > L2; j--) {
+				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)Imax;
+
+				double x = sides.R[i].X - (Jmax-j-1) * dξ.X;
+				double y = sides.U[j].Y - (Imax-i-1) * dη.Y;
+				// mesh[i,j] = new Vec2(x, y) + dξ + dη;
+				mesh[i,j] = new Vec2(x, y);
 			}
 		}
 

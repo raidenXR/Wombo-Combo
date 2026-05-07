@@ -149,7 +149,8 @@ GeoRandomizer.WriteBoundaryNodes(sides, out_boundaries, N);
 GeoRandomizer.WriteCorrectGrid(out_nodes, mesh, N-1, N-1)
 
 // let bnodes = [|A; B; C; D; A|]
-let bnodes = GeoRandomizer.SidesToBoundaryNodes(sides, N)
+// let bnodes = GeoRandomizer.SidesToBoundaryNodes(sides, N)
+let bnodes = GeoRandomizer.BoundsFromMesh(mesh, N, N)
 
 Gnuplot()
 |> Gnuplot.datablockXY (bnodes |> Array.map (fun v -> v.X)) (bnodes |> Array.map (fun v -> v.Y)) "bounds"
@@ -157,8 +158,9 @@ Gnuplot()
 |>> "set output 'correct_grid_compare_4.png'"
 |>> "unset key"
 // |>> $"plot '$bounds' with lines lc rgb 'black' lw 2"
-|>> $"plot '$bounds' with lines lc rgb 'black' lw 2, \\"
-|>> $"'{out_nodes}' with lines lc rgb 'black'"
+// |>> $"plot '$bounds' with lines lc rgb 'black' lw 2, \\"
+// |>> $"'{out_nodes}' with lines lc rgb 'black'"
+|>> $"plot '{out_nodes}' with lines lc rgb 'black'"
 |> Gnuplot.run
 |> ignore
 
