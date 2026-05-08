@@ -172,47 +172,40 @@ public static class GeoRandomizer
 			mesh[0,j] = sides.D[j];
 			mesh[Imax-1,j] = sides.U[j];
 		}
-
-
-		int L1 = Imax % 2 == 0 ? Imax / 2 : (Imax / 2) + 1;
-		int L2 = Jmax % 2 == 0 ? Jmax / 2 : (Jmax / 2) + 1;
 		
-		for (int i = 0; i < Imax; i++) {
-			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)Jmax;
+		// for (int i = 2; i < Imax - 1; i++) {
+		// 	Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)(Jmax-1);
 
-			for (int j = 0; j <= L2; j++) {
-				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)Imax;
+		// 	for (int j = 2; j < Jmax - 1; j++) {
+		// 		Vec2 dη = (sides.U[j] - sides.D[j]) / (double)(Imax-1);
 
-				double x = sides.L[i].X + j * (sides.R[i].X - sides.L[i].X) / Jmax;
-				double y = sides.D[j].Y + i * (sides.U[j].Y - sides.D[j].Y) / Imax;
-				// mesh[i,j] = new Vec2(x, y) + dξ + dη;
-				mesh[i,j] = new Vec2(x, y);
+		// 		mesh[1,1] = mesh[0,0] + dξ + dη;
+				
+
+		// 		mesh[i,j] = mesh[i-1,j-1] + dξ + dη;
+		// 		mesh[i,j-1].Y = mesh[i,j].Y - dη.Y;
+		// 		mesh[i,j+1].Y = mesh[i,j].Y + dη.Y;
+		// 	}
+		// }
+		
+		for (int i = 1; i < Imax; i++) {
+			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)(Jmax-1);
+
+			for (int j = 1; j <= i; j++) {
+				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)(Imax-1);
+
+				mesh[i,j].X = mesh[i,j-1].X + dξ.X;
+				mesh[i,j].Y = mesh[i-1,j].Y + dη.Y; 								
 			}
-			// for (int j = Jmax-1; j > L2; j--) {
-			// 	Vec2 dξ = (sides.R[j] - sides.L[j]) / (double)Jmax;
-
-			// 	double x = sides.R[i].X - j * (sides.R[i].X - sides.L[i].X) / Jmax;
-			// 	double y = sides.D[j].Y + i * (sides.U[j].Y - sides.D[j].Y) / Imax;
-			// 	mesh[i,j] = new Vec2(x, y) + dξ + dη;
-			// }
 		}
-		for (int i = Imax-1; i >= 0; i--) {
-			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)Jmax;
+		for (int i = Imax-2; i >= 0; i--) {
+			Vec2 dξ = (sides.L[i] - sides.R[i]) / (double)(Jmax-1);
+			
+			for (int j = Jmax-2; j >= i; j--) {
+				Vec2 dη = (sides.D[j] - sides.U[j]) / (double)(Imax-1);
 
-			// for (int j = 1; j <= L2; j++) {
-			// 	Vec2 dξ = (sides.R[j] - sides.L[j]) / (double)Jmax;
-
-			// 	double x = sides.L[i].X + j * (sides.R[i].X - sides.L[i].X) / Jmax;
-			// 	double y = sides.U[j].Y - i * (sides.U[j].Y - sides.D[j].Y) / Imax;
-			// 	mesh[i,j] = new Vec2(x, y) + dξ + dη;
-			// }
-			for (int j = Jmax-1; j > L2; j--) {
-				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)Imax;
-
-				double x = sides.R[i].X - (Jmax-j-1) * dξ.X;
-				double y = sides.U[j].Y - (Imax-i-1) * dη.Y;
-				// mesh[i,j] = new Vec2(x, y) + dξ + dη;
-				mesh[i,j] = new Vec2(x, y);
+				mesh[i,j].X = mesh[i,j+1].X + dξ.X;
+				mesh[i,j].Y = mesh[i+1,j].Y + dη.Y; 				
 			}
 		}
 
@@ -272,7 +265,7 @@ public static class GeoRandomizer
 		for (int i = 0; i < Imax; i++) {
 			for (int j = 0; j < Jmax; j++) {
 				if (mesh[i,j].X == 0 && mesh[i,j].Y == 0) {
-					Console.WriteLine("({0}, {1})", i, j);
+					Console.WriteLine("unitialized: ({0}, {1})", i, j);
 				}
 			}
 		}

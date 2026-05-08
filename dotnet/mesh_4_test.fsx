@@ -107,7 +107,7 @@ for n in 1..max_iters do
 
     for k in 0..antennas_idx.Length-1 do
         let (i,j) = antennas_idx[k]
-        printfn "%d, %d" i j
+        // printfn "%d, %d" i j
         if signal[i,j] > 1.2 * s then
             let I,J =
                 match (GeoRandomizer.GetGradient(mesh, signal, i,j).SteepestDescend()) with
@@ -142,15 +142,15 @@ for k in 0..5 do
     printfn "%s" (string antennas_pos[k])
             
 
-GeoRandomizer.CheckUnitialized(mesh, N-1, N-1)
+GeoRandomizer.CheckUnitialized(mesh, N, N)
 
 GeoRandomizer.WriteBoundaryNodes(sides, out_boundaries, N);
 
-GeoRandomizer.WriteCorrectGrid(out_nodes, mesh, N-1, N-1)
+GeoRandomizer.WriteCorrectGrid(out_nodes, mesh, N, N)
 
-// let bnodes = [|A; B; C; D; A|]
+let bnodes = [|A; B; C; D; A|]
 // let bnodes = GeoRandomizer.SidesToBoundaryNodes(sides, N)
-let bnodes = GeoRandomizer.BoundsFromMesh(mesh, N, N)
+// let bnodes = GeoRandomizer.BoundsFromMesh(mesh, N, N)
 
 Gnuplot()
 |> Gnuplot.datablockXY (bnodes |> Array.map (fun v -> v.X)) (bnodes |> Array.map (fun v -> v.Y)) "bounds"
@@ -158,9 +158,9 @@ Gnuplot()
 |>> "set output 'correct_grid_compare_4.png'"
 |>> "unset key"
 // |>> $"plot '$bounds' with lines lc rgb 'black' lw 2"
-// |>> $"plot '$bounds' with lines lc rgb 'black' lw 2, \\"
-// |>> $"'{out_nodes}' with lines lc rgb 'black'"
-|>> $"plot '{out_nodes}' with lines lc rgb 'black'"
+|>> $"plot '$bounds' with lines lc rgb 'black' lw 2, \\"
+|>> $"'{out_nodes}' with lines lc rgb 'black'"
+// |>> $"plot '{out_nodes}' with lines lc rgb 'black'"
 |> Gnuplot.run
 |> ignore
 
