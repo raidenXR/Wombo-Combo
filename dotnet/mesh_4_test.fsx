@@ -9,11 +9,11 @@ let out_nodes = "../dat-files/correct_grid_4.dat"
 let out_nodes_2 = "../dat-files/correct_grid_compare_4.dat"
 let out_boundaries = "../dat-files/boundaries_4.dat"
 
-let N = 21
+let N = 30
 let D = Vec2(20., 50.)
 let A = Vec2(10., 10.)
-let C = Vec2(30., 40.)
-let B = Vec2(30., 20.)
+let C = Vec2(60., 40.)
+let B = Vec2(50., 20.)
 
 
 let l = Array.zeroCreate<Vec2> N
@@ -33,11 +33,11 @@ let u = Array.zeroCreate<Vec2> N
 
 
 for i in 0..N-1 do
-    d[i] <- A + ((B-A)/double N) * (double i)
-    u[i] <- D + ((C-D)/double N) * (double i)
+    d[i] <- A + ((B-A)/double (N-1)) * (double i)
+    u[i] <- D + ((C-D)/double (N-1)) * (double i)
 
-    l[i] <- A + ((D-A)/double N) * (double i)
-    r[i] <- B + ((C-B)/double N) * (double i)
+    l[i] <- A + ((D-A)/double (N-1)) * (double i)
+    r[i] <- B + ((C-B)/double (N-1)) * (double i)
 
     // printfn "%s, %s" (string r[i]) (string r[i])
 
