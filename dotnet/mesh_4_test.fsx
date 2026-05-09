@@ -13,7 +13,7 @@ let N = 30
 let D = Vec2(20., 50.)
 let A = Vec2(10., 10.)
 let C = Vec2(60., 40.)
-let B = Vec2(50., 20.)
+let B = Vec2(80., 0.)
 
 
 let l = Array.zeroCreate<Vec2> N
@@ -21,16 +21,13 @@ let r = Array.zeroCreate<Vec2> N
 let d = Array.zeroCreate<Vec2> N
 let u = Array.zeroCreate<Vec2> N
 
-
-// let normal_mesh = Array2D.zeroCreate<Vec2> N N
+// fill the boundaries with non-linear geometry. make it curvy!
 // for i in 0..N-1 do
-//     for j in 0..N-1 do
-//         normal_mesh[i,j].X <- (A + ((D-A)/double N) * (double i)).X
-//         normal_mesh[i,j] <- (B + ((C-B)/double N) * (double i)).X
-//         normal_mesh[i,j] <- (A + ((B-A)/double N) * (double i)).X
-//         normal_mesh[i,j] <- (D + ((C-D)/double N) * (double i)).X
+//     d[i] <- A + ((B-A)/double (N-1)) * (double (i) + 14.3)
+//     u[i] <- D + ((C-D)/double (N-1)) * (double i * 1.7)
 
-
+//     l[i] <- A + ((D-A)/double (N-1)) * (double i)
+//     r[i] <- B + ((C-B)/double (N-1)) * (double i * double i * 0.4)
 
 for i in 0..N-1 do
     d[i] <- A + ((B-A)/double (N-1)) * (double i)
@@ -39,10 +36,8 @@ for i in 0..N-1 do
     l[i] <- A + ((D-A)/double (N-1)) * (double i)
     r[i] <- B + ((C-B)/double (N-1)) * (double i)
 
-    // printfn "%s, %s" (string r[i]) (string r[i])
-
-let sides = GeoRandomizer.RandomSides(l, r, d, u)
-let bounds = GeoRandomizer.SidesToBoundaryNodes(sides, N)
+// let sides = GeoRandomizer.RandomSides(l, r, d, u)
+let sides = GeoRandomizer.RandomSidesWithNoise(l, r, d, u)
 let mesh = GeoRandomizer.MeshFromRandomizer(sides, N, N)
 let signal = Array2D.zeroCreate<double> N N
 
@@ -148,12 +143,12 @@ GeoRandomizer.WriteBoundaryNodes(sides, out_boundaries, N);
 
 GeoRandomizer.WriteCorrectGrid(out_nodes, mesh, N, N)
 
-let bnodes = [|A; B; C; D; A|]
-// let bnodes = GeoRandomizer.SidesToBoundaryNodes(sides, N)
+// let bnodes = [|A; B; C; D; A|]
+let boundary_nodes = GeoRandomizer.SidesToBoundaryNodes(sides, N, N)
 // let bnodes = GeoRandomizer.BoundsFromMesh(mesh, N, N)
 
 Gnuplot()
-|> Gnuplot.datablockXY (bnodes |> Array.map (fun v -> v.X)) (bnodes |> Array.map (fun v -> v.Y)) "bounds"
+|> Gnuplot.datablockXY (boundary_nodes |> Array.map (fun v -> v.X)) (boundary_nodes |> Array.map (fun v -> v.Y)) "bounds"
 |>> "set terminal png size 840,580"
 |>> "set output 'correct_grid_compare_4.png'"
 |>> "unset key"
