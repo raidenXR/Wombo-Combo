@@ -177,7 +177,7 @@ public static class GeoRandomizer
 		for (int i = 1; i < Imax - 1; i++) {
 			Vec2 dξ = (sides.R[i] - sides.L[i]) / (double)(Jmax-1);
 
-			for (int j = 1; j < Jmax; j++) {
+			for (int j = 1; j < Jmax - 1; j++) {
 				Vec2 dη = (sides.U[j] - sides.D[j]) / (double)(Imax-1);
 
 				mesh[i,j].X = mesh[i,j-1].X + dξ.X;
